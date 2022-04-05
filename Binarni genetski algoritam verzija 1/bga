@@ -1,0 +1,38 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from ypstruct import structure
+import ga
+
+
+def sphere(x):
+    return sum (x**2)
+
+
+problem=structure()
+problem.constfunc= sphere
+
+problem.nvar=5
+problem.varmin=-10
+problem.varmax=10
+
+params=structure()
+params.maxit=100
+params.npop=20
+params.pc=1
+params.gamma= 0.1
+params.mu= 0.1
+params.sigma=0.1
+params.beta=1
+
+
+out = ga.run(problem, params)
+
+
+#plt.plot(out.bestcost)
+plt.semilogy(out.bestcost)
+plt.xlim(0, params.maxit)
+plt.xlabel('Iteracije')
+plt.ylabel('Najbolje resenje')
+plt.title('Genetski algoritam')
+plt.grid(True)
+plt.show

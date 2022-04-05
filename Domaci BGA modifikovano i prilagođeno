@@ -1,0 +1,169 @@
+import random
+import codecs
+import sys
+import ctypes
+import subprocess
+
+max_iter = 10000
+mut_rates = [0.2]
+testovi = ['тест', 'порезник', 'ономатопеја', 'деведесетосмица', 'престолонаследниковица']
+
+mapa_zn = {'а': [0,0,0,0,1], 'б': [0,0,0,1,0], 'в': [0,0,0,1,1], 'г': [0,0,1,0,0], 
+           'д': [0,0,1,0,1], 'ђ': [0,0,1,1,0], 'е': [0,0,1,1,1], 'ж': [0,1,0,0,0], 
+           'з': [0,1,0,0,1], 'и': [0,1,0,1,0], 'ј': [0,1,0,1,1], 'к': [0,1,1,0,0], 
+           'л': [0,1,1,0,1], 'љ': [0,1,1,1,0], 'м': [0,1,1,1,1], 'н': [1,0,0,0,0], 
+           'њ': [1,0,0,0,1], 'о': [1,0,0,1,0], 'п': [1,0,0,1,1], 'р': [1,0,1,0,0], 
+           'с': [1,0,1,0,1], 'т': [1,0,1,1,0], 'ћ': [1,0,1,1,1], 'у': [1,1,0,0,0], 
+           'ф': [1,1,0,0,1], 'х': [1,1,0,1,0], 'ц': [1,1,0,1,1], 'ч': [1,1,1,0,0], 
+           'џ': [1,1,1,0,1], 'ш': [1,1,1,1,0], '+': [0,0,0,0,0], '-': [1,1,1,1,1] }
+
+
+
+def trosak_c_fajl(file):                #pozivanje c fajla koji kada se izvrsi vrati fju troska kroz algoritam 
+    
+    subprocess.call(["g++", "genetski.cpp"]) # OR gcc for c program
+    tmp=subprocess.call("l.c")
+    print("printing result")
+    print(tmp)
+
+    
+    return tmp
+    
+
+def trosak(hromozom, resenje):
+    n = 0
+    for i in range(len(hromozom)):
+        if hromozom[i] != resenje[i]:
+            n += 1
+    return n
+
+def mutiraj(hromozom, alfabet, verovatnoca):
+    for i in range(len(hromozom)):
+        if random.random() <= verovatnoca:
+            t = hromozom[i]
+           
+            while hromozom[i] == t:
+                hromozom[i] = random.choice(alfabet)
+    return hromozom
+
+
+
+def dekoduj_bin2(hromozom):         #Kodovanje i dekodovanje binarnog genetskog algoritma
+    l = []
+    for a in hromozom:
+        l.extend(mapa_zn[a])
+    return l
+
+def dekoduj_bin(hromozom):
+    l = []
+    d = hromozom.encode()
+    for i in range(len(d)):
+        for mask in [0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01]:
+            if mask & d[i] > 0:
+                l.append(1)
+            else:
+                l.append(0)
+    return l
+
+
+
+
+def genetski():
+#   
+    alfabeti = ([0, 1],)
+    #dekodovanja = (dekoduj_bin2, dekoduj_bin)
+    dekodovanja = (dekoduj_bin2,)
+#   
+    alfnazivi = ('B',)
+    pop_vel = 10
+    npop_vel = 10
+    
+    # turnir---> dakle svako ima jednake sanse 
+    def turnir(fja, test, pop, vel):
+        z = []
+        while len(z) < vel:
+            z.append(random.choice(pop))
+        najbolji = None
+        najbolji_f = None
+        for e in z:
+            ff = fja(e, test)
+            if najbolji is None or ff < najbolji_f:
+               najbolji_f = ff
+               najbolji = e
+        return najbolji
+    
+    # uniformno ukrštanje hromozoma
+    def ukrsti(h1, h2):
+        r = random.randrange(1, len(h1)-1)
+        if r <= 0.5:                #50:50 sanse za svaki hromozom
+            h3 = h1[:r] 
+            h4 = h2[:r] 
+        else:
+            h3=h2[:r]
+            h4=h1[:r]
+        return h3, h4
+    
+    c = 0
+#    outfile = codecs.open('izlaz_ga.txt', 'w', 'utf-8')
+    outfile = sys.stdout
+    for test in testovi:
+        for alf, dek, alfnaziv in zip(alfabeti, dekodovanja, alfnazivi):
+            c += 1
+            # test (traženo rešenje) prevodimo u kodovani oblik
+            test_d = dek(test)
+            # veličina testa
+            test_vel = len(test_d)
+            s_trosak = 0
+            s_iteracija = 0
+            best_ever_sol = None
+            best_ever_f = None
+            # 5 pokretanja genetskog algoritma
+            for k in range(5):
+                print('Pokretanje: GA', test, test_d, alfnaziv, mut_rat, k, file=outfile)
+#                print('Pokretanje: GA', test, test_d, alfnaziv, mut_rat, k)
+                best = None
+                best_f = None
+                t = 0
+                # generisanje populacije pomoću alfabeta
+                pop = [[random.choice(alf) for i in range(test_vel)] for j in range(pop_vel)]
+                # ponavljamo dok ne postignemo maksimum iteracija ili dok trošak ne postane 0
+                while best_f != 0 and t < max_iter:
+                    n_pop = pop[:]
+                    while len(n_pop) < pop_vel + npop_vel:
+                        h1 = turnir(trosak, test_d, pop, 3)
+                        h2 = turnir(trosak, test_d, pop, 3)
+                        h3, h4 = ukrsti(h1, h2)         #uniformno ukrstanje
+                        mutiraj(h3, alf, mut_rat)       #zatim mutacija
+                        mutiraj(h4, alf, mut_rat)
+                        n_pop.append(h3)
+                        n_pop.append(h4)
+                    pop = sorted(n_pop, key=lambda x : trosak(x, test_d))[:pop_vel]
+                    f = trosak(pop[0], test_d)
+                    if best_f is None or best_f > f:
+                        best_f = f
+                        best = pop[0]
+
+                    t += 1
+                s_trosak += best_f
+                s_iteracija += t
+                # azuriranje
+                if best_ever_f is None or best_ever_f > best_f:
+                    best_ever_f = best_f
+                    best_ever_sol = best
+                print(t, best, best_f, file=outfile)
+              
+            s_trosak /= 5
+            s_iteracija /= 5
+            print('Srednji trosak: %.2f' % s_trosak, file=outfile)
+            print('Srednji broj iteracija: %.2f' % s_iteracija, file=outfile)
+            print('Najbolje resenje: %s' % best_ever_sol, file=outfile)
+            print('Najbolji trosak: %.2f' % best_ever_f, file=outfile)
+    #outfile.close()
+    
+    
+    
+    
+    #if __name__ == '__main__':
+#    global mut_rat
+for mut_rat in mut_rates:
+    genetski()
